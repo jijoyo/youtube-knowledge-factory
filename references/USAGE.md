@@ -82,7 +82,7 @@ crontab -e
 - **YouTube rate-limited:** The radar stops automatically after 3 consecutive rate-limits. Wait 12-24h and resume.
 - **No subtitles:** Some videos don't have subtitles. They are skipped with cause in blocklist.
 - **IPv6 issues:** The radar forces IPv4 by default (`--force-ipv4`).
-- **Deno not found:** Install Deno for challenge solving: `brew install deno` (macOS) or download from deno.land.
+- **Deno not found:** Install Deno for challenge solving with the official script: `curl -fsSL https://deno.land/install.sh | sh`, or use your package manager. See https://docs.deno.com/runtime/getting_started/installation/
 
 ## License
 
