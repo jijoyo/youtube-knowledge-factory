@@ -1,0 +1,532 @@
+<!DOCTYPE html>
+<html><head><meta charset="utf-8"><title>Hemeroteca — Vivo</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font:13px system-ui;background:#0a0a0a;color:#e5e5e5;padding:16px;max-width:900px;margin:0 auto}
+  h2{color:#facc15;margin:0 0 4px;font-size:18px}
+  .sub{color:#9ca3af;font-size:12px;margin-bottom:12px}
+
+  /* === ZONA 1: PROGRESO === */
+  .global-bar{background:#1a1a1a;border:1px solid #2a2a2a;border-radius:12px;padding:14px 16px;margin-bottom:12px}
+  .global-pct{font-size:28px;font-weight:700;color:#facc15;float:right;line-height:1}
+  .global-label{font-size:12px;color:#9ca3af;margin-bottom:6px}
+  .global-track{height:20px;background:#222;border-radius:6px;overflow:hidden;margin-top:6px}
+  .global-fill{height:100%;background:linear-gradient(90deg,#facc15,#f59e0b);border-radius:6px;transition:width 0.8s ease}
+
+  .card{background:#1a1a1a;border:1px solid #2a2a2a;border-radius:12px;padding:12px 16px;margin-bottom:12px}
+  .head{display:flex;gap:8px;padding:5px 0;border-bottom:1px solid #333;font-size:11px;color:#9ca3af;cursor:pointer}
+  .head div:hover{color:#facc15}
+  .row{display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid #1f1f1f;transition:background 0.3s;flex-wrap:wrap}
+  .lwrap{flex-basis:100%;display:flex;align-items:center;gap:6px}
+  .lbar{flex:1;height:4px;background:#1b1b1b;border-radius:2px;overflow:hidden}
+  .lfill{height:100%;background:#22d3ee;border-radius:2px;transition:width 0.5s ease}
+  .lfill.pulse{width:100%;animation:pul 1.2s infinite}
+  @keyframes pul{50%{opacity:.15}}
+  .ltxt{font-size:10px;color:#67e8f9;text-align:right;min-width:130px}
+  .row.active{background:#1c1a0a;border-left:3px solid #facc15;padding-left:6px;animation:glow 2s infinite}
+  .row.done .fill{background:#22c55e}
+  .name{width:160px;font-size:12px}.pct{width:40px;text-align:right;font-size:12px}
+  .bar{flex:1;height:12px;background:#222;border-radius:4px;overflow:hidden}
+  .fill{height:100%;background:#facc15;transition:width 0.8s ease}
+  .count{width:80px;text-align:right;color:#6b7280;font-size:11px}
+  @keyframes glow{0%,100%{background:#1c1a0a}50%{background:#2a2510}}
+
+  /* === ZONA 2: ACTIVIDAD + PROCESOS === */
+  .two-col{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px}
+  @media(max-width:600px){.two-col{grid-template-columns:1fr}}
+  .col-title{font-size:11px;color:#facc15;text-transform:uppercase;letter-spacing:1px;margin-bottom:6px;font-weight:700}
+  .log-entry{font-size:11px;padding:3px 0;border-bottom:1px solid #1f1f1f;color:#9ca3af;font-family:monospace}
+  .log-entry.ok{color:#22c55e}.log-entry.error{color:#ef4444}.log-entry.info{color:#facc15}
+  .proc-row{display:flex;align-items:center;gap:6px;padding:3px 0;border-bottom:1px solid #1f1f1f;font-size:11px}
+  .proc-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+  .proc-dot.on{background:#22c55e}.proc-dot.off{background:#4b5563}
+  .proc-name{width:90px;font-weight:600}.proc-pid{color:#6b7280;width:60px}.proc-det{color:#9ca3af}
+
+  /* === HOY POR CANAL === */
+  .hoy-row{cursor:pointer}
+  .hoy-row:hover{color:#facc15}
+  .hoy-det{display:none;padding:8px 4px 8px 12px;font-size:11px;color:#9ca3af}
+  .hoy-det.open{display:block}
+  .minibars{display:flex;gap:3px;align-items:flex-end;height:34px;margin:4px 0;justify-content:flex-start}
+  .minibar{flex:1;max-width:26px;background:#facc15;border-radius:2px;min-height:2px}
+  .minibar.zero{background:#333}
+  .minibar.na{background:transparent;border:1px dashed #444}
+  .minilabels{display:flex;gap:3px;font-size:9px;color:#6b7280}
+  .minilabels span{flex:1;text-align:center}
+  .aviso-ok{color:#22c55e}.aviso-warn{color:#facc15}.aviso-bad{color:#ef4444}
+  .tabs{display:flex;gap:2px;margin-bottom:0}
+  .tab{padding:6px 14px;background:#1a1a1a;border:1px solid #2a2a2a;border-bottom:none;border-radius:8px 8px 0 0;cursor:pointer;font-size:12px;color:#9ca3af;transition:all 0.2s}
+  .tab:hover{color:#facc15}.tab.active{background:#111;color:#facc15;border-color:#facc15}
+  .tab-content{background:#111;border:1px solid #2a2a2a;border-radius:0 8px 8px 8px;padding:12px 16px;max-height:300px;overflow-y:auto;display:none}
+  .tab-content.visible{display:block}
+  .tab-row{display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid #1f1f1f;font-size:11px}
+  .tab-row .old{color:#ef4444}.tab-row .ok{color:#22c55e}
+
+  .foot{margin-top:12px;font-size:12px;color:#9ca3af;display:flex;gap:8px;align-items:center}
+  .dot{width:8px;height:8px;border-radius:50%;background:#22c55e;animation:pulse 2s infinite}
+  @keyframes pulse{0%,100%{opacity:1}50%{opacity:0.4}}
+
+  /* === GUARDIA THROTTLE 429 === */
+  #throttle-banner{display:none;background:#2a0a0a;border:2px solid #ef4444;border-radius:12px;padding:12px 16px;margin-bottom:12px;font-size:14px;font-weight:700;color:#ef4444;text-align:center;animation:blink429 1s infinite}
+  @keyframes blink429{0%,100%{opacity:1}50%{opacity:.25}}
+  /* === AVISO COOKIE/LOGIN === */
+  #cookie-banner{display:none;background:#221a08;border:1px solid #f59e0b;border-radius:12px;padding:8px 16px;margin-bottom:12px;font-size:12px;color:#fbbf24;text-align:center}
+
+  /* === BOTONES CONTROL === */
+  .ctrl-btns{display:flex;gap:6px;margin-top:12px}
+  .ctrl-btns button{padding:5px 14px;background:#1a1a1a;border:1px solid #333;border-radius:6px;color:#e5e7eb;font-size:12px;cursor:pointer;transition:all 0.15s}
+  .ctrl-btns button:hover{border-color:#facc15;color:#facc15}
+  .ctrl-btns button:active{transform:scale(0.96)}
+  .ctrl-btns .ok{border-color:#22c55e;color:#22c55e}
+  .ctrl-btns .err{border-color:#ef4444;color:#ef4444}
+</style>
+</head><body>
+
+<!-- ZONA 1: PROGRESO -->
+<h2>Hemeroteca — Vivo</h2>
+<div id="ahora-line" style="font-size:13px;color:#67e8f9;margin-bottom:12px">📡 conectando...</div>
+<div id="throttle-banner">⛔ 429 THROTTLE <span id="throttle-det"></span> — radar parado solo, retoma con ▶ cuando pase ~1h</div>
+<div id="cookie-banner">⚠ <span id="cookie-det"></span></div>
+<div class="global-bar">
+  <div class="global-pct" id="g-pct">—</div>
+  <div class="global-label"><span id="g-count">cargando...</span></div>
+  <div class="global-track"><div class="global-fill" id="g-fill" style="width:0%"></div></div>
+</div>
+<div class="card" style="margin-top:8px">
+  <div class="col-title">Progreso 24h <span id="g-delta" style="color:#22c55e"></span></div>
+  <canvas id="g-canvas" width="600" height="80" style="width:100%;height:80px"></canvas>
+</div>
+<div class="card">
+  <div class="head">
+    <div class="name" onclick="sortBy('canal')">Canal <span id="a-canal"></span></div>
+    <div class="pct" onclick="sortBy('pct')">% <span id="a-pct">▼</span></div>
+    <div class="bar">Progreso</div>
+    <div class="count" onclick="sortBy('hecho')">Hecho <span id="a-hecho"></span></div>
+  </div>
+  <div id="out"></div>
+</div>
+
+<!-- ZONA 2: ACTIVIDAD + PROCESOS -->
+<div class="two-col">
+  <div class="card">
+    <div class="col-title">Actividad</div>
+    <div id="actividad">cargando...</div>
+  </div>
+  <div class="card">
+    <div class="col-title">Procesos</div>
+    <div id="procesos">cargando...</div>
+  </div>
+</div>
+
+<!-- BUSCADOR GLOBAL -->
+<div class="card">
+  <div class="col-title">Buscar en hemeroteca</div>
+  <div style="display:flex;gap:6px;margin-bottom:8px">
+    <input id="q-input" placeholder="título, tema o ID… (Enter busca)" style="flex:1;padding:6px 10px;background:#0a0a0a;border:1px solid #333;border-radius:6px;color:#e5e7eb;font-size:12px"
+      onkeydown="if(event.key==='Enter')buscarDoc()">
+    <button onclick="buscarDoc()" style="padding:6px 14px;background:#1a1a1a;border:1px solid #facc15;border-radius:6px;color:#facc15;font-size:12px;cursor:pointer">Buscar</button>
+  </div>
+  <div id="search-body"><div class="tab-row"><span>Escribe y Enter: por título primero, contenido después</span></div></div>
+</div>
+
+<!-- ZONA 3: PESTAÑAS -->
+<div class="tabs">
+  <div class="tab active" onclick="showTab('conv')">Conversiones</div>
+  <div class="tab" onclick="showTab('idx')">Índice</div>
+  <div class="tab" onclick="showTab('logs')">Logs</div>
+  <div class="tab" onclick="showTab('prop')">Proponer</div>
+  <div class="tab" onclick="showTab('expl');cargarArbol()">Explorar</div>
+</div>
+<div class="tab-content visible" id="tc-conv">
+  <div id="conv-body">cargando...</div>
+</div>
+<div class="tab-content" id="tc-idx">
+  <div id="idx-body">cargando...</div>
+</div>
+<div class="tab-content" id="tc-logs">
+  <div id="logs-body" style="font-family:monospace;font-size:11px;white-space:pre-wrap;color:#9ca3af">cargando...</div>
+</div>
+<div class="tab-content" id="tc-prop">
+  <div style="font-size:11px;color:#9ca3af;margin-bottom:6px">Pega el link o @handle del canal. Lo analizo <b>sin descargar nada</b>: cuento videos, reviso 3 de muestra (subs / miembros / edad) y te digo si es factible.</div>
+  <div style="display:flex;gap:6px;margin-bottom:8px">
+    <input id="prop-input" placeholder="https://www.youtube.com/@canal/videos o @canal" style="flex:1;padding:6px 10px;background:#0a0a0a;border:1px solid #333;border-radius:6px;color:#e5e7eb;font-size:12px">
+    <button onclick="proponerCanal()" id="btn-prop" style="padding:6px 14px;background:#1a1a0a;border:1px solid #facc15;border-radius:6px;color:#facc15;font-size:12px;cursor:pointer">Analizar</button>
+  </div>
+  <div id="prop-body"><div class="tab-row"><span>Sin análisis todavía</span></div></div>
+</div>
+<div class="tab-content" id="tc-expl">
+  <div style="font-size:11px;color:#9ca3af;margin-bottom:6px">Árbol nicho → canal → videos. Clic expande. <span id="rag-line" style="color:#67e8f9"></span></div>
+  <div id="expl-body">cargando...</div>
+  <div style="display:flex;gap:6px;margin-top:8px">
+    <input id="ask-input" placeholder="Pregunta al RAG (alcon)…" style="flex:1;padding:6px 10px;background:#0a0a0a;border:1px solid #333;border-radius:6px;color:#e5e7eb;font-size:12px"
+      onkeydown="if(event.key==='Enter')preguntarRag()">
+    <button onclick="preguntarRag()" style="padding:6px 14px;background:#1a1a1a;border:1px solid #67e8f9;border-radius:6px;color:#67e8f9;font-size:12px;cursor:pointer">Preguntar</button>
+  </div>
+  <div id="ask-body" style="margin-top:6px"></div>
+</div>
+
+<div class="ctrl-btns">
+  <button onclick="radarCtrl('start')" id="btn-radar-start">▶ Radar</button>
+  <button onclick="radarCtrl('stop')" id="btn-radar-stop">⏸ Radar</button>
+  <button onclick="serverCtrl()" id="btn-server">🔄 Server</button>
+</div>
+<div class="foot"><span class="dot"></span><span id="foot">conectando...</span></div>
+
+<script>
+let data=[], liveData=null, sortKey='pct', asc=false, prev={};
+let canalActivo='';
+let detMap={};
+const openCanales=new Set();
+const openImp=new Set();
+function toggleCanal(c){ openCanales.has(c)?openCanales.delete(c):openCanales.add(c); render(); }
+function toggleImp(c){ openImp.has(c)?openImp.delete(c):openImp.add(c); render(); }
+function detailHtml(d){
+  if(!d) return `<div class="hoy-det open"><div>Sin datos de hoy — mañana hay historial</div></div>`;
+  const nh = d.nuevos_hoy==null?'—':`+${d.nuevos_hoy}`;
+  const est = d.estado==='ok'?'✅ al día':(d.estado==='curso'?'⏳ en curso':`📥 faltan ${d.faltan}`);
+  const av = (d.avisos||[]).map(a=>a==='atorado'?'🔴 atorado':(a==='miembros_altos'?'🟡 miembros':(a==='idioma_por_confirmar'?'⏸ idioma':'⚠ '+a))).join(' ');
+  const prop = d.propuesta?`<div>⏸ Idioma por confirmar: propongo <b>${esc(d.propuesta)}</b> — confirma por chat antes del backfill</div>`:'';
+  const nota = d.nota?`<div style="color:#6b7280">${esc(d.nota)}</div>`:'';
+  const h7 = (d.hist7||[]).slice(-7); while(h7.length<7) h7.unshift(null);
+  const mx = Math.max(1,...h7.filter(v=>v!=null&&v>0));
+  const bars = h7.map(v=>v==null?'<div class="minibar na" title="sin datos"></div>':`<div class="minibar ${v>0?'':'zero'}" style="height:${v>0?Math.max(4,Math.round(v/mx*32)):2}px" title="${v>0?`+${v} ese día`:'0'}"></div>`).join('');
+  const wd=['D','L','M','X','J','V','S'], t=new Date().getDay();
+  const labs = h7.map((_,i)=>`<span>${wd[(t-6+i+700)%7]}</span>`).join('');
+  const rec = d.recuperables>0?` · 🔄 ${d.recuperables} recuperables`:'';
+  const link = d.url?` · <a href="${d.url}" target="_blank" style="color:#67e8f9">▶ ver canal</a>`:'';
+  const imp = (d.imposibles_lista||[]);
+  const impRows = imp.map(v=>`<div class="tab-row"><span><a href="https://www.youtube.com/watch?v=${v.id}" target="_blank" style="color:#67e8f9">🔗 ${v.id}</a></span><span>${esc(v.causa)} · ${esc(v.fecha)}</span></div>`).join('');
+  const impBlock = imp.length?`<div class="tab-row hoy-row" onclick="toggleImp('${d.canal}')"><span>⛔ Imposibles (${imp.length}) — verifica tú</span><span>clic para lista</span></div><div class="hoy-det${openImp.has(d.canal)?' open':''}" id="imp-${d.canal}">${impRows}</div>`:'';  return `<div class="hoy-det open">`
+    + `<div>Hoy <b>${nh}</b> · ${est} · Imposibles ${d.imposibles} (${d.miembros} members)${rec} · Chequeo ${esc(d.last_check||'—')}${av?' · '+av:''}${link}</div>` + prop + nota
+    + `<div class="minibars">${bars}</div><div class="minilabels">${labs}</div>`
+    + `<div style="font-size:10px;color:#6b7280">■ videos sumados ese día (más alto = más)</div>` + impBlock + `</div>`;
+}
+
+async function load(){
+  try{
+    const [prog, proc, act, conv, idx, rlog, hist] = await Promise.all([
+      fetch('/api/progreso').then(r=>r.json()),
+      fetch('/api/procesos').then(r=>r.json()),
+      fetch('/api/actividad').then(r=>r.json()),
+      fetch('/api/conversiones').then(r=>r.json()),
+      fetch('/api/index-status').then(r=>r.json()),
+      fetch('/api/radar-log').then(r=>r.json()),
+      fetch('/api/historial').then(r=>r.json()),
+    ]);
+
+    // ZONA 1: progreso global
+    document.getElementById('g-pct').textContent = prog.pct+'%';
+    // guardia throttle: banner rojo parpadeante si el radar se paró solo
+    const th = prog.throttle||{activo:false};
+    const tb = document.getElementById('throttle-banner');
+    if(th.activo){ tb.style.display='block'; document.getElementById('throttle-det').textContent=`(${th.consec||3} seguidos en ${th.canal||'?'} · ${th.desde||''})`; }
+    else tb.style.display='none';
+    const srtLabel = prog.srt_pendientes > 0 ? ` (+${prog.srt_pendientes} .srt en cola)` : '';
+    document.getElementById('g-count').textContent = `${prog.total_md} videos / ${prog.total_esperado} esperados${srtLabel}`;
+    document.getElementById('g-fill').style.width = prog.pct+'%';
+
+    // detectar canal activo de procesos
+    canalActivo = '';
+    for(const p of proc){
+      if(p.nombre==='yt-dlp' && p.estado==='activo' && p.detalle) canalActivo=p.detalle;
+    }
+    liveData = prog.live||null;
+    detMap={}; (prog.detalle||[]).forEach(d=>detMap[d.canal]=d);
+
+    // ZONA 1: barritas
+    data=prog.canales; prev=prog; render();
+
+    // ZONA 2: actividad
+    let actHtml='';
+    for(const a of act){
+      actHtml+=`<div class="log-entry ${a.tipo}">${esc(a.texto)}</div>`;
+    }
+    document.getElementById('actividad').innerHTML=actHtml||'<div class="log-entry">sin actividad hoy</div>';
+
+    // ZONA 2: procesos
+    let procHtml='';
+    for(const p of proc){
+      procHtml+=`<div class="proc-row"><div class="proc-dot ${p.estado==='activo'?'on':'off'}"></div><div class="proc-name">${p.nombre}</div><div class="proc-pid">${p.pid||'—'}</div><div class="proc-det">${p.detalle||p.estado}</div></div>`;
+    }
+    document.getElementById('procesos').innerHTML=procHtml;
+
+    // ZONA 3: conversiones
+    let convHtml=`<div class="tab-row"><span>Pendientes .srt</span><span>${conv.pendientes}</span></div>`;
+    convHtml+=`<div class="tab-row"><span>Convertidos hoy</span><span>${conv.convertidos_hoy}</span></div>`;
+    for(const [canal,n] of Object.entries(conv.cola).sort((a,b)=>b[1]-a[1])){
+      convHtml+=`<div class="tab-row"><span>${canal}</span><span>${n} .srt</span></div>`;
+    }
+    document.getElementById('conv-body').innerHTML=convHtml||'<div class="tab-row"><span>Sin conversiones pendientes</span></div>';
+
+    // ZONA 3: índice
+    let idxHtml='';
+    for(const i of idx){
+      const cls=i.desactualizado?'old':(i.status==='ok'?'ok':'');
+      idxHtml+=`<div class="tab-row"><span>${i.canal}</span><span class="${cls}">${i.local}/${i.youtube} ${i.last_check}</span></div>`;
+    }
+    document.getElementById('idx-body').innerHTML=idxHtml||'<div class="tab-row"><span>Índice vacío</span></div>';
+
+    // ZONA 3: logs en vivo (últimas 15 líneas del radar)
+    const logLines = (rlog.lines||[]).map(l=>{
+      const cls = l.includes('✓')?'ok':(l.includes('⏸')||l.includes('ERROR')?'error':(l.includes('▶')||l.includes('...')?'info':''));
+      return `<div class="log-entry ${cls}">${esc(l)}</div>`;
+    }).join('');
+    const detHtml = (rlog.detalle||[]).map(l=>`<div class="log-entry">${esc(l.slice(0,120))}</div>`).join('');
+    document.getElementById('logs-body').innerHTML = logLines+(detHtml?`<div class="log-entry info">--- ${esc(rlog.canal||'')} (en vivo) ---</div>`+detHtml:'')||'<div class="log-entry">sin logs</div>';
+
+    // HOY: total del día junto al contador global
+    const _det = prog.detalle||[];
+    if(_det.length){
+      const _totHoy = _det.reduce((s,d)=>s+(d.nuevos_hoy||0),0);
+      const _nAv = _det.filter(d=>(d.avisos||[]).length).length;
+      document.getElementById('g-count').textContent += ` · +${_totHoy} hoy${_nAv?` · ${_nAv} aviso${_nAv>1?'s':''}`:''}`;
+    }
+
+    // GRAFO 24h
+    if(hist && hist.length>1){
+      const c=document.getElementById('g-canvas'), x=c.getContext('2d');
+      x.clearRect(0,0,c.width,c.height);
+      const vals=hist.map(h=>h.md), min=Math.min(...vals), max=Math.max(...vals), rng=(max-min)||1;
+      x.strokeStyle='#facc15'; x.lineWidth=2; x.beginPath();
+      hist.forEach((h,i)=>{
+        const px=(i/(hist.length-1))*c.width, py=c.height-8-((h.md-min)/rng)*(c.height-16);
+        i?x.lineTo(px,py):x.moveTo(px,py);
+      });
+      x.stroke();
+      const delta=vals[vals.length-1]-vals[0];
+      document.getElementById('g-delta').textContent=`+${delta} en 24h`;
+    }
+
+    // aviso cookie/login: ámbar si no hay sesión (age-restricted fallarán)
+    const ck = prog.cookie||{};
+    const cb = document.getElementById('cookie-banner');
+    if(ck.veredicto && ck.veredicto!=='CON_LOGIN'){
+      cb.style.display='block';
+      document.getElementById('cookie-det').textContent = `Cookie ${ck.veredicto}: ${ck.motivo||'revisa sesión'}`;
+    } else cb.style.display='none';
+
+    // AHORA: qué hace la herramienta en este momento (1 línea humana)
+    const ah = prog.ahora||{};
+    const faseTxt = {revisando:'revisando lista',descargando:'descargando',listo:'procesado',terminado:'terminó'};
+    if(ah.activo){
+      const it = (ah.total!=null&&ah.item!=null)?` · video ${ah.item}/${ah.total}`:'';
+      document.getElementById('ahora-line').textContent = `📡 AHORA: ${ah.canal||'?'} · ${faseTxt[ah.fase]||ah.fase||'?'}${it} · ${ah.detalle||''} (${ah.hora||''})`;
+    } else document.getElementById('ahora-line').textContent = '📡 parado — dashboard y búsquedas siguen vivas';
+
+    document.getElementById('foot').textContent = `Radar: ${prog.radar} · Cookie: ${ck.veredicto||'?'} | ${new Date().toLocaleTimeString()}`;
+    // RAG: puntos locales + espejo HP
+    try{
+      const rg = prog.rag||{};
+      const lp = rg.puntos, tm = rg.total_md||0;
+      const hp = (rg.hp||{});
+      const locTxt = lp!=null?`RAG forja ${lp}/${tm}${(tm-lp)>0?` · atrás ${tm-lp}`:' · al día'}`:`RAG forja CIEGO (${esc(rg.local_ciego||'?')})`;
+      const hpTxt = hp.puntos!=null?`HP ${hp.puntos}${hp.desactualizado?' (desactualizado)':''}`:(hp.sordo?`HP sordo (${esc(hp.sordo)})`:'HP ?');
+      document.getElementById('rag-line').textContent = `${locTxt} · ${hpTxt}`;
+    }catch(e){}
+  }catch(e){
+    document.getElementById('foot').textContent = `Error: ${e.message}`;
+  }
+}
+
+function esc(s){return String(s).replace(/</g,'&lt;').replace(/>/g,'&gt;')}
+function escJs(s){return String(s).replace(/\\/g,'\\\\').replace(/'/g,"\\'")}
+
+function filaDoc(d){
+  const rr = escJs(d.ruta);
+  return `<div class="tab-row"><span>🔍 ${esc(d.titulo)} <span style="color:#6b7280">[${esc(d.id)}·${esc(d.canal)}${d.fecha?'·'+esc(d.fecha):''}]</span></span>`
+    + `<span><button onclick="vistaDoc('${rr}',this)" style="background:none;border:none;cursor:pointer" title="vista previa">👁</button>`
+    + `<button onclick="abrirDoc('${rr}')" style="background:none;border:none;cursor:pointer" title="abrir">📄</button></span></div>`
+    + `<div class="hoy-det" style="max-height:220px;overflow-y:auto"></div>`;
+}
+async function buscarDoc(){
+  const q=document.getElementById('q-input').value.trim();
+  const box=document.getElementById('search-body');
+  if(q.length<2){box.innerHTML='<div class="tab-row"><span>Mínimo 2 letras</span></div>';return;}
+  box.innerHTML='<div class="tab-row"><span>Buscando…</span></div>';
+  try{
+    const r=await fetch('/api/buscar?q='+encodeURIComponent(q));
+    const d=await r.json();
+    if(d.error){box.innerHTML=`<div class="tab-row"><span>${esc(d.error)}</span></div>`;return;}
+    box.innerHTML=d.length?d.map(filaDoc).join(''):'<div class="tab-row"><span>Sin resultados</span></div>';
+  }catch(e){box.innerHTML=`<div class="tab-row"><span class="old">Error: ${esc(e.message)}</span></div>`;}
+}
+async function vistaDoc(ruta,btn){
+  const det=btn.closest('.tab-row').nextElementSibling;
+  if(det.classList.contains('open')&&det.innerHTML){det.classList.remove('open');det.innerHTML='';return;}
+  det.innerHTML='cargando…';det.classList.add('open');
+  try{
+    const r=await fetch('/api/doc?ruta='+encodeURIComponent(ruta));
+    const d=await r.json();
+    det.innerHTML=d.error?esc(d.error):`<b>${esc(d.titulo)}</b><div style="white-space:pre-wrap;margin-top:4px">${esc((d.texto||'').slice(0,3000))}${d.texto&&d.texto.length>3000?'…':''}</div>`;
+  }catch(e){det.innerHTML=esc(e.message);}
+}
+async function abrirDoc(ruta){
+  try{
+    const r=await fetch('/api/abrir',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({ruta})});
+    const d=await r.json();
+    if(!d.ok) alert('No se pudo abrir: '+(d.error||'?'));
+  }catch(e){alert('Error: '+e.message);}
+}
+let arbolCache=null;
+async function cargarArbol(){
+  const box=document.getElementById('expl-body');
+  try{
+    if(!arbolCache){
+      const r=await fetch('/api/arbol');
+      arbolCache=await r.json();
+    }
+    let h='';
+    for(const [nicho,canales] of Object.entries(arbolCache)){
+      const tot=Object.values(canales).reduce((s,c)=>s+c.n,0);
+      h+=`<div class="tab-row hoy-row" onclick="this.nextElementSibling.classList.toggle('open')"><span>📁 ${esc(nicho)}</span><span>${Object.keys(canales).length} canales · ${tot} videos</span></div><div class="hoy-det">`;
+      for(const [canal,info] of Object.entries(canales).sort((a,b)=>b[1].n-a[1].n)){
+        h+=`<div class="tab-row"><span>▶ ${esc(canal)} <span style="color:#6b7280">(${info.n} · ${esc(info.ultimo)})</span></span><span><button onclick="listaCanal('${esc(canal)}',0,this)" style="background:none;border:1px solid #333;border-radius:4px;color:#e5e7eb;cursor:pointer;font-size:11px">ver</button></span></div><div class="hoy-det"></div>`;
+      }
+      h+=`</div>`;
+    }
+    box.innerHTML=h||'<div class="tab-row"><span>Vacío</span></div>';
+  }catch(e){box.innerHTML=`<div class="tab-row"><span>Error: ${esc(e.message)}</span></div>`;}
+}
+async function listaCanal(canal,pag,btn){
+  const det=btn.closest('.tab-row').nextElementSibling;
+  det.classList.add('open');
+  det.innerHTML='cargando…';
+  try{
+    const r=await fetch('/api/lista?canal='+encodeURIComponent(canal)+'&pag='+pag);
+    const d=await r.json();
+    if(d.error){det.innerHTML=esc(d.error);return;}
+    let h=d.items.map(v=>`<div class="tab-row"><span>${esc(v.titulo)} <span style="color:#6b7280">[${esc(v.id)}${v.fecha?'·'+esc(v.fecha):''}]</span></span><span><button onclick="vistaDocPor(event,'${esc(v.id)}')" style="background:none;border:none;cursor:pointer" title="vista">👁</button></span></div><div class="hoy-det" style="max-height:220px;overflow-y:auto"></div>`).join('');
+    const npag=Math.ceil(d.total/50);
+    if(npag>1)h+=`<div class="tab-row"><span>pág ${d.pag+1}/${npag}</span><span>${d.pag>0?`<button onclick="listaCanal('${esc(canal)}',${d.pag-1},this)" style="background:none;border:1px solid #333;border-radius:4px;color:#e5e7eb;cursor:pointer">←</button>`:''} ${(d.pag+1)<npag?`<button onclick="listaCanal('${esc(canal)}',${d.pag+1},this)" style="background:none;border:1px solid #333;border-radius:4px;color:#e5e7eb;cursor:pointer">→</button>`:''}</span></div>`;
+    det.innerHTML=h||'vacío';
+  }catch(e){det.innerHTML=esc(e.message);}
+}
+async function vistaDocPor(ev,id){
+  ev.stopPropagation();
+  const btn=ev.target.closest('button');
+  const det=btn.closest('.tab-row').nextElementSibling;
+  if(det.classList.contains('open')&&det.innerHTML){det.classList.remove('open');det.innerHTML='';return;}
+  det.innerHTML='cargando…';det.classList.add('open');
+  try{
+    const q=await (await fetch('/api/buscar?q='+encodeURIComponent(id))).json();
+    const hit=(q||[]).find(x=>x.id===id);
+    if(!hit){det.innerHTML='no encontrado';return;}
+    const r=await fetch('/api/doc?ruta='+encodeURIComponent(hit.ruta));
+    const d=await r.json();
+    det.innerHTML=`<b>${esc(d.titulo)}</b><div style="white-space:pre-wrap;margin-top:4px">${esc((d.texto||'').slice(0,3000))}</div>`;
+  }catch(e){det.innerHTML=esc(e.message);}
+}
+async function preguntarRag(){
+  const q=document.getElementById('ask-input').value.trim();
+  const box=document.getElementById('ask-body');
+  if(!q){return;}
+  box.innerHTML='<div class="tab-row"><span>Preguntando al RAG…</span></div>';
+  try{
+    const r=await fetch('/api/knowledge/research',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({query:q,topk:8})});
+    const d=await r.json();
+    const docs=(d.docs||[]).map(x=>`<div>📄 ${esc(String(x).split('/').slice(-1)[0])}</div>`).join('');
+    box.innerHTML=`<div style="font-size:12px;white-space:pre-wrap">${esc(d.markdown||d.error||'sin respuesta')}</div><div style="margin-top:6px;font-size:11px;color:#6b7280">${docs}</div>`;
+  }catch(e){box.innerHTML=`<div class="tab-row"><span>Error: ${esc(e.message)}</span></div>`;}
+}
+
+async function abrirCarpeta(c){
+  try{
+    const r=await fetch('/api/carpeta/'+encodeURIComponent(c));
+    const d=await r.json();
+    if(!d.ok) alert('No se pudo abrir: '+(d.error||'?'));
+  }catch(e){ alert('Error: '+e.message); }
+}
+
+function sortBy(k){
+  if(sortKey===k) asc=!asc; else {sortKey=k; asc=(k==='canal');}
+  document.querySelectorAll('[id^="a-"]').forEach(e=>e.textContent='');
+  document.getElementById('a-'+k).textContent=asc?'▲':'▼';
+  render();
+}
+
+function render(){
+  let arr=[...data];
+  arr.sort((a,b)=>{
+    if(sortKey==='canal') return asc?a.canal.localeCompare(b.canal):b.canal.localeCompare(a.canal);
+    if(sortKey==='hecho') return asc?a.hecho-b.hecho:b.hecho-a.hecho;
+    return asc?a.pct-b.pct:b.pct-a.pct;
+  });
+  let html='';
+  for(let c of arr){
+    const active=c.canal===canalActivo?'active':'';
+    const done=c.pct===100?'done':'';
+    let label='convertidos';
+    let liveHtml='';
+    if(liveData && liveData.canal===c.canal){
+      if(liveData.item){
+        const w=(liveData.item/liveData.total*100).toFixed(1);
+        liveHtml=`<div class="lwrap"><div class="lbar"><div class="lfill" style="width:${w}%"></div></div><div class="ltxt">descargando en vivo · item ${liveData.item}/${liveData.total}</div></div>`;
+      }else{
+        label='convirtiendo...';
+        liveHtml='';
+      }
+    }
+    let sub = (c.esperado-c.hecho)>0 ? (c.reales===0 ? `✅ completo (${c.esperado-c.hecho} imposibles)` : `📥 ${c.reales} reales`) : label;
+    html+=`<div class="row ${active} ${done}" onclick="toggleCanal('${c.canal}')" style="cursor:pointer" title="clic para desglose"><div class="name">${openCanales.has(c.canal)?'▼':'▶'} ${c.canal} <span style="font-size:9px;color:#6b7280">${esc((detMap[c.canal]||{}).idioma||'')}</span></div><div class="pct">${c.pct}%</div><div class="bar"><div class="fill ${done}" style="width:${c.pct}%"></div></div><div class="count">${c.hecho}/${c.esperado} ${liveData&&liveData.canal===c.canal?label:sub}</div><button onclick="event.stopPropagation();abrirCarpeta('${c.canal}')" title="abrir carpeta" style="background:none;border:none;cursor:pointer;font-size:13px">📁</button>${liveHtml}</div>`;
+    if(openCanales.has(c.canal)) html+=detailHtml(detMap[c.canal]);
+  }
+  document.getElementById('out').innerHTML=html;
+}
+
+function showTab(id){
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  document.querySelectorAll('.tab-content').forEach(t=>t.classList.remove('visible'));
+  event.target.classList.add('active');
+  document.getElementById('tc-'+id).classList.add('visible');
+}
+
+async function radarCtrl(action){
+  const btn=document.getElementById('btn-radar-'+action);
+  try{
+    const r=await fetch('/api/radar/'+action);
+    const d=await r.json();
+    btn.classList.add('ok');
+    setTimeout(()=>btn.classList.remove('ok'),2000);
+    setTimeout(load,1000);
+  }catch(e){
+    btn.classList.add('err');
+    setTimeout(()=>btn.classList.remove('err'),2000);
+  }
+}
+
+async function serverCtrl(){
+  const btn=document.getElementById('btn-server');
+  try{
+    await fetch('/api/server/restart');
+    btn.classList.add('ok');
+    setTimeout(()=>btn.classList.remove('ok'),2000);
+    setTimeout(load,3000);
+  }catch(e){
+    btn.classList.add('err');
+    setTimeout(()=>btn.classList.remove('err'),2000);
+  }
+}
+
+async function proponerCanal(){
+  const v=document.getElementById('prop-input').value.trim();
+  const box=document.getElementById('prop-body');
+  if(!v){box.innerHTML='<div class="tab-row"><span>Pega primero un link o @handle</span></div>';return;}
+  box.innerHTML='<div class="tab-row"><span>Analizando (flat + 3 muestras, ~30-60s)...</span></div>';
+  try{
+    const r=await fetch('/api/canal/check',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({url:v})});
+    const d=await r.json();
+    if(d.error){box.innerHTML=`<div class="tab-row"><span class="old">${esc(d.error)}</span></div>`;return;}
+    const col=d.veredicto==='FACTIBLE'?'ok':(d.veredicto==='YA_LO_TIENES'?'':(d.veredicto.startsWith('NO')||d.veredicto.startsWith('BLOQ')?'old':''));
+    let h=`<div class="tab-row"><span><b>${esc(d.handle||v)}</b></span><span class="${col}"><b>${esc(d.veredicto||'')}</b></span></div>`;
+    h+=`<div class="tab-row"><span>${esc(d.motivo||'')}</span>${d.total?`<span>${d.total} videos${d.estim_min?` · ~${d.estim_min} min`:''}</span>`:''}</div>`;
+    if(d.idioma_detectado&&d.idioma_detectado!=='?') h+=`<div class="tab-row"><span>Habla: <b>${esc(d.idioma_detectado)}</b></span><span class="${d.alerta_idioma?'old':'ok'}">${esc(d.alerta_idioma||'idioma OK')}</span></div>`;
+    for(const m of (d.muestra||[])){
+      h+=`<div class="tab-row"><span>${esc(m.titulo||m.id)} <span style="color:#6b7280">[${esc(m.id)}]</span></span><span class="${m.subs?'ok':'old'}">${m.subs?'con subs':'sin subs'} · ${esc(m.lang||'?')}${m.subs_es?' · es':''}${m.subs_en?' · en':''}</span></div>`;
+    }
+    box.innerHTML=h;
+  }catch(e){box.innerHTML=`<div class="tab-row"><span class="old">Error: ${esc(e.message)}</span></div>`;}
+}
+
+load(); setInterval(load, 5000);
+</script>
+</body></html>

@@ -1,0 +1,96 @@
+#!/bin/bash
+# yt-ask — Pregunta a tus vídeos por carpeta (técnica carpetas + long context 131K)
+# Uso: yt-ask "pregunta" [carpeta] [modelo]
+# Ej: yt-ask "cómo acelero con MTP en llama.cpp" 01-ia-agentes/nichonauta
+# Ej: yt-ask "qué dice de Clean Architecture" 02-programacion
+
+set -e
+QUERY="${1:-}"
+FILTRO="${2:-}"
+MODEL="${3:-qwen36-mtp}"
+BASE="$HOME/Documentos/youtube-knowledge/knowledge/videos"
+ROUTER="http://127.0.0.1:8080"
+
+if [ -z "$QUERY" ]; then
+  echo "Uso: yt-ask \"pregunta\" [carpeta] [modelo]"
+  echo "  carpeta: 01-ia-agentes/nichonauta | 01-ia-agentes | 02-programacion | (vacío = todo)"
+  echo "  modelo: qwen36-mtp (131K) | gemma4-12b-std (rápido)"
+  exit 1
+fi
+
+# resolver carpeta
+if [ -n "$FILTRO" ]; then
+  SEARCH_PATH="$BASE/$FILTRO"
+else
+  SEARCH_PATH="$BASE"
+fi
+
+if [ ! -d "$SEARCH_PATH" ]; then
+  echo "[ERROR] no existe $SEARCH_PATH"
+  exit 1
+fi
+
+echo "[1/3] Buscando en $FILTRO → $SEARCH_PATH"
+# grep por relevancia (cuenta ocurrencias), top 10 archivos .md
+# si no hay .md aún (están en .srt), busca .srt también
+mapfile -t TOP < <(grep -r -i -l "$QUERY" "$SEARCH_PATH" --include="*.md" --include="*.srt" 2>/dev/null | head -20)
+if [ ${#TOP[@]} -eq 0 ]; then
+  # fallback: usa fzf por palabras clave sueltas
+  echo "[WARN] sin match exacto, buscando por palabras sueltas..."
+  first=$(echo "$QUERY" | awk '{print $1}')
+  mapfile -t TOP < <(grep -r -i -l "$first" "$SEARCH_PATH" --include="*.md" --include="*.srt" 2>/dev/null | head -10)
+fi
+
+if [ ${#TOP[@]} -eq 0 ]; then
+  echo "[ERROR] nada encontrado para '$QUERY' en $FILTRO"
+  exit 1
+fi
+
+# limitar a 10 y a ~80K tokens (10 archivos * ~19KB = ~190KB = ~47K tokens, entra en 131K)
+TOP=("${TOP[@]:0:10}")
+echo "[2/3] Top ${#TOP[@]} docs:"
+for f in "${TOP[@]}"; do echo "  - $(basename "$f")"; done
+
+# construir contexto (solo texto limpio, sin frontmatter si es md)
+CONTEXTO=""
+for f in "${TOP[@]}"; do
+  # si es .md, quitar frontmatter y thumbnail line
+  if [[ "$f" == *.md ]]; then
+    txt=$(sed '1,/^---$/d; 1,/^---$/d' "$f" 2>/dev/null | sed '/!\[thumbnail\]/d; /^\*\*Canal:/d; /^> /d; /^# /d' | head -c 8000)
+  else
+    txt=$(grep -v "^#" "$f" | grep -v "^[0-9]*$" | grep -v "^[0-9][0-9]:" | head -c 8000)
+  fi
+  CONTEXTO+=$'\n\n--- DOC: '"$(basename "$f")"' ---\n'"$txt"
+done
+
+# recortar a 100K chars (~25K tokens) para entrar seguro en 131K
+CONTEXTO=$(echo "$CONTEXTO" | head -c 100000)
+
+echo "[3/3] Preguntando a $MODEL (contexto $(echo -n "$CONTEXTO" | wc -c) chars)..."
+PROMPT="Responde usando SOLO el contexto de abajo. Si no está, di 'no está en los vídeos'. Cita el DOC origen.
+
+Contexto:
+$CONTEXTO
+
+Pregunta: $QUERY
+
+Respuesta concisa en español, con cita [DOC]:"
+
+# llamar router
+curl -s "$ROUTER/v1/chat/completions" -H "Content-Type: application/json" -d @- <<EOF | python3 -c "
+import sys,json
+d=json.load(sys.stdin)
+msg=d['choices'][0]['message']
+print(msg.get('content','') or msg.get('reasoning_content','')[:2000])
+print('\n---\nvelocidad:', round(d.get('timings',{}).get('predicted_per_second',0),1), 'tok/s')
+"
+{
+  "model": "$MODEL",
+  "messages": [
+    {"role": "system", "content": "Eres asistente RAG. Responde solo con el contexto, cita DOC."},
+    {"role": "user", "content": $(echo "$PROMPT" | jq -Rs .)}
+  ],
+  "temperature": 0.2,
+  "max_tokens": 800
+}
+EOF
